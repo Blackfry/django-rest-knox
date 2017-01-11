@@ -2,7 +2,9 @@ import binascii
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
+from django.utils.translation import ugettext_lazy as _
 from OpenSSL.rand import bytes as generate_bytes
+from rest_framework import exceptions
 
 from knox.settings import knox_settings, CONSTANTS
 
@@ -26,6 +28,11 @@ def hash_token(token, salt):
     input is unhexlified
     '''
     digest = hashes.Hash(sha(), backend=default_backend())
-    digest.update(binascii.unhexlify(token))
+    try:
+        digest.update(binascii.unhexlify(token))
+    except binascii.Error:
+        msg = _('Non-hexadecimal digit found. '
+                'The token string passed to authentication may be null.')
+        raise exceptions.AuthenticationFailed(msg)
     digest.update(binascii.unhexlify(salt))
     return binascii.hexlify(digest.finalize()).decode()
